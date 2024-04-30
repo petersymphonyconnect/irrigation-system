@@ -34,3 +34,116 @@ The design has the following capabilities:
 * Water moisture sensors ([Amazon link](https://www.amazon.co.uk/dp/B09V7HFHX3?))
 * 5V 3A power supply ([Amazon link](https://www.amazon.co.uk/dp/B0BQBR4RZM?))
  
+# Notes on building
+* PlatformIO appears fussier than the Arduino IDE compiler, and errors on file b64.cpp in the HttpClient library with a function not providing a return value for a non-void function. See [this note](https://forum.arduino.cc/t/httpclient-library-example-with-nodemcu/1042659/10) on how to resolve this issue, which is essentially a small edit to provide a return value.
+
+# Flashing
+* The project is setup to flash using ElegantOTA. The first tine you flash the device, comment out the following two lines in the platformio.ini file to force it to flash via serial port
+```
+;extra_scripts = platformio_upload.py
+;upload_protocol = custom
+```
+
+# Configuration
+1. Once flashed, the first boot will result in the WifiManager library making the ESP available as a Wifi access point to facilitate Wifi configuration. Join the ESP prefixed SSID, and follow the instructions to join your home Wifi
+2. On first boot, a default irrigation setup will be configured. You can retrieve this configuration using the following:
+```
+% curl http://<myESPipaddress>/config
+{"instance": "MyIrrigationServer"}
+```
+If you can't work out what IP address DHCP has assigned, this will be printed to the ESP8266 serial port during boot. Once the service is configured with a logger, you will get the ip address reported in boot log events for easier identifiation.
+
+To set configuration, you specify zero or more logging interfaces and zero or more SensorGroups. Here's an example which:
+- Configures both a loki integration for logging, and an Mqtt integration. If you don't require logging, remove one or both of these
+- A single sensor group called strawberries, with a water level sensor on channel 1
+- Two moisture sensors on channels 1 and 2, set to that if any reach minimum, pumping occurs. Other valid values are "all", so all sensors must reach minimim before triggering
+- A single pump, on D4 output pin. Valid values are D0, D1, D2, D3, D4
+- Minimum moisture level of 250 (valid values are the 10 bit ADC range, 0-1023)
+- Pump duration of 2 seconds
+- Respective millisecond check periods for water level reporting, pump checks (during pumping), and moisture checks
+- Water levels are continuously checked during pumping, and stops pumping if low water detected
+```
+{
+    "instance": "testserver",
+    "loggers": [
+       {"type": "loki",
+        "server": "192.168.x.x"
+       },
+       {"type": "mqtt",
+        "server": "192.168.x.x",
+        "topicPrefix": "home/irrigation/testserver/"
+       }
+    ],
+    "groups": [
+        {
+            "name": "strawberries",
+            "triggerType": "any",
+            "waterSensorChannel": 0,
+            "moistureSensorChannels": [
+                1,2
+            ],
+            "pumpPinIds": [
+                "D4"
+            ],
+            "minMoisture": 250,
+            "pumpSecs": 2,
+            "waterCheckPeriodMs": 1200000,
+            "pumpCheckPeriodMs": 1000,
+            "moistureCheckPeriodMs": 60000
+        }
+    ]
+}
+```
+To save this configuration to the device, copy this json to a file myconfig.json (or other name you choose) and use this command:
+```
+%curl -X POST --data-binary @myconfig.json http://<myESPipaddress>:80/config
+Config file writen%
+```
+If the posted configuration is invalid JSON, you will get an error message indicating a deserialisation issue. If the JSON is valid, but not expected structure, you will get an error indicating what is missing.
+If validation passes, configuration is written to LittleFS permanent storage, and applied to the running system, thus allowing remote changes to configuration. This is particularly useful for tuning the minMoisture setting.
+
+Additional groups can be specified. This example has two SensorGroups, sharing the same water sensor (i.e. pumping from the same bucket), and logging only to Loki.
+```
+{
+    "instance": "testserver",
+    "loggers": [
+       {"type": "loki",
+        "server": "192.168.86.5"
+       }
+    ],
+    "groups": [
+        {
+            "name": "strawberries",
+            "triggerType": "any",
+            "waterSensorChannel": 0,
+            "moistureSensorChannels": [
+                0,1
+            ],
+            "pumpPinIds": [
+                "D4"
+            ],
+            "minMoisture": 250,
+            "pumpSecs": 2,
+            "waterCheckPeriodMs": 1200000,
+            "pumpCheckPeriodMs": 1000,
+            "moistureCheckPeriodMs": 600000
+        },
+        {
+            "name": "basil",
+            "triggerType": "all",
+            "waterSensorChannel": 0,
+            "moistureSensorChannels": [
+                2,3
+            ],
+            "pumpPinIds": [
+                "D0"
+            ],
+            "minMoisture": 500,
+            "pumpSecs": 5,
+            "waterCheckPeriodMs": 1200000,
+            "pumpCheckPeriodMs": 1000,
+            "moistureCheckPeriodMs": 60000
+        }
+    ]
+}
+```
