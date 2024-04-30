@@ -12,7 +12,6 @@ The design has the following capabilities:
 * Persistent configuration, stored in LitteFS filesystem
 * Integration with Loki and/or MQTT for logging. Visualisations thus possible with Graphana
 * Use of WifiManager to support easy setup and safe configuration of Wifi access (this keeps wifi SIDs/passwords separate fron code)
-* Basic level of discoverability by Alexa using the FauxESP library
 
 # Hardware summary:
 A [circuit schematic](docs/IrrigationSystem.pdf) can be found in the docs folder.
