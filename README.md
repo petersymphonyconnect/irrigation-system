@@ -15,7 +15,8 @@ The design has the following capabilities:
 * Basic level of discoverability by Alexa using the FauxESP library
 
 # Hardware summary:
-* For simplicity, it uses a NodeMCU development board that provides the associated circuitry for 5v->3.3 volt step down power regulator for the ESP8266, and associated serial port circuitry for code flashing/monitoring.
+A [circuit schematic](docs/IrrigationSystem.pdf) can be found in the docs folder.
+* For simplicity, we use a NodeMCU development board that provides the associated circuitry for 5v->3.3 volt step down power regulator for the ESP8266, and associated serial port circuitry for code flashing/monitoring.
 * It uses an 74HC4051 multiplexer, switched using 3 digital out pins, to enable monitoring of 8 sensors using the single analogue input of the ESP8266.
 * Separate 3v optocoupler relay boards are used to switch on/off the pumps (see link below). Other boards could be used, but careful attention to coil operation voltage, and switching current draw off the ESP8266 digital out pin must be considered.
 * A LM317 is configured to provide 3.3v >1Amp current to drive the relay coils. Switching of these boards is performed directly off the ESP8266 pin out, with a measured draw of ~5ma (other relay boards will behave differently)
