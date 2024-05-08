@@ -40,12 +40,12 @@ class LoggerInterfaceLoki : public LoggerInterface
 /****************************************/
 
 LoggerInterfaceLoki::LoggerInterfaceLoki(String instanceName, int lokiPort, String lokiServer, String lokiPath) {
-  _job = instanceName;
-  _lokiPort = lokiPort;
-  _lokiServer  = lokiServer;
-  _lokiPath = lokiPath;
-  timeClient.begin();
-  return;
+    _job = instanceName;
+    _lokiPort = lokiPort;
+    _lokiServer  = lokiServer;
+    _lokiPath = lokiPath;
+    timeClient.begin();
+    return;
 }
 
 LoggerInterfaceLoki::~LoggerInterfaceLoki() {
@@ -53,33 +53,33 @@ LoggerInterfaceLoki::~LoggerInterfaceLoki() {
 }
 
 time_t LoggerInterfaceLoki::getEpoch() {
-  timeClient.update();
-  time_t epochTime = timeClient.getEpochTime();
-  return epochTime;
+    timeClient.update();
+    time_t epochTime = timeClient.getEpochTime();
+    return epochTime;
 }
 
 // Function to log a Json structure
 void LoggerInterfaceLoki::logJsonMetric(String metric, JsonDocument valueJsonDoc) {
-  JsonDocument streamDoc;
-  streamDoc["stream"]["job"]   = _job;
-  streamDoc["stream"]["metric"]   = metric;
-  // Build stream value
-  String valueString;
-  serializeJson(valueJsonDoc,valueString);
+    JsonDocument streamDoc;
+    streamDoc["stream"]["job"]   = _job;
+    streamDoc["stream"]["metric"]   = metric;
+    // Build stream value
+    String valueString;
+    serializeJson(valueJsonDoc,valueString);
 
-  logString(streamDoc, valueString);
+    logString(streamDoc, valueString);
 }
 
 void LoggerInterfaceLoki::logJsonGroupMetric(String metric, String group, JsonDocument valueJsonDoc) {
-  JsonDocument streamDoc;
-  streamDoc["stream"]["job"]     = _job;
-  streamDoc["stream"]["metric"]  = metric;
-  streamDoc["stream"]["group"]   = group;
-  // Build stream value
-  String valueString;
-  serializeJson(valueJsonDoc,valueString);
+    JsonDocument streamDoc;
+    streamDoc["stream"]["job"]     = _job;
+    streamDoc["stream"]["metric"]  = metric;
+    streamDoc["stream"]["group"]   = group;
+    // Build stream value
+    String valueString;
+    serializeJson(valueJsonDoc,valueString);
 
-  logString(streamDoc, valueString);
+    logString(streamDoc, valueString);
 }
 
 //

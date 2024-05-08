@@ -11,6 +11,7 @@
 #include "LoggerInterface.h"
 #include "LoggerInterfaceMqtt.h"
 #include "LoggerInterfaceLoki.h"
+#include "LoggerInterfaceSerial.h"
 
 #ifndef __WATERINGSYSTEM_CONFIGMANAGER_H__
 #define __WATERINGSYSTEM_CONFIGMANAGER_H__
@@ -28,22 +29,22 @@
 //
 class ConfigManager
 {
-  private:
-    const char* irrigationConfigFile = "/irrigationconfig.json";
-    const char* defaultJsonStr = "{\"instance\": \"MyIrrigationServer\"}";
-    ESP8266WebServer* _configServer;
-    IrrigationService* _irrigationService; // The service we'll configure, set in constructor
-    AnalogueSensorHandler* _analogueSensorHandler;
+    private:
+        const char* irrigationConfigFile = "/irrigationconfig.json";
+        const char* defaultJsonStr = "{\"instance\": \"MyIrrigationServer\", \"loggers\": [{\"type\": \"serial\"}]}";
+        ESP8266WebServer* _configServer;
+        IrrigationService* _irrigationService; // The service we'll configure, set in constructor
+        AnalogueSensorHandler* _analogueSensorHandler;
 
-  public:
- //   ConfigManager(int port, IrrigationService *irrigationService, AnalogueSensorHandler* analogueSensorHandler);
-    ConfigManager(ESP8266WebServer *server, IrrigationService *irrigationService, AnalogueSensorHandler* analogueSensorHandler);
-    void handleClient();
-    void handleGet();
-    void handlePost();
-    void loadConfiguration();
-    void writeDefaultConfiguration();
-    String processJsonConfig(JsonDocument configDoc, bool applyConfig);
+    public:
+        ConfigManager(ESP8266WebServer *server, IrrigationService *irrigationService, AnalogueSensorHandler* analogueSensorHandler);
+        void handleClient();
+        void handleGet();
+        void handlePost();
+        void handleDelete();
+        void loadConfiguration();
+        void writeDefaultConfiguration();
+        String processJsonConfig(JsonDocument configDoc, bool applyConfig);
 }; 
 
 
@@ -51,7 +52,7 @@ ConfigManager::ConfigManager(ESP8266WebServer *server,
                              IrrigationService *irrigationService,
                              AnalogueSensorHandler* analogueSensorHandler) {
     if(!LittleFS.begin()){
-      Serial.println("An Error has occurred while mounting LittleFS");
+        Serial.println("An Error has occurred while mounting LittleFS");
     }
 
     _irrigationService = irrigationService;
@@ -62,6 +63,9 @@ ConfigManager::ConfigManager(ESP8266WebServer *server,
     });
     _configServer->on("/config",HTTP_POST,[this]() {
         this->handlePost();
+    });
+    _configServer->on("/config",HTTP_DELETE,[this]() {
+        this->handleDelete();
     });
     _configServer->begin();
 }
@@ -177,6 +181,15 @@ void ConfigManager::handlePost() {
     return;
 }
 
+void ConfigManager::handleDelete() {
+    if (LittleFS.remove(irrigationConfigFile)) {
+        _configServer->send(200,"application/json","Config file removed. Default configuration now used.");
+    } else {
+        _configServer->send(500,"application/json","Failed to delete configuration file");   
+    }
+    loadConfiguration();
+} 
+
 //
 // Code to parse out configuration from a Json document.
 // Optionally writes this configuration to runtime service.
@@ -219,8 +232,7 @@ String ConfigManager::processJsonConfig(JsonDocument configDoc, bool applyConfig
                                                                          LOKI_PATH);
                     _irrigationService->getLogger()->addLoggerInterface(interface);
                 }
-            }
-            else if (typeStr.equals("mqtt")) {
+            } else if (typeStr.equals("mqtt")) {
                 // Process mqtt config
                 int mqttPort = MQTT_DEFAULT_PORT;
                 if (loggerJson.containsKey("port")) {
@@ -235,6 +247,11 @@ String ConfigManager::processJsonConfig(JsonDocument configDoc, bool applyConfig
                                                                          mqttServer.c_str(),
                                                                          mqttPort,
                                                                          topicPrefix);
+                    _irrigationService->getLogger()->addLoggerInterface(interface);
+                }
+            } else if (typeStr.equals("serial")) {
+                if (applyConfig) {
+                    LoggerInterface* interface = new LoggerInterfaceSerial(instanceName.c_str());
                     _irrigationService->getLogger()->addLoggerInterface(interface);
                 }
             } else {

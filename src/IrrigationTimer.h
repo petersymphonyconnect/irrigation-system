@@ -15,41 +15,34 @@
 class IrrigationTimer 
 {
   private: 
-    unsigned long  getMillis();
     unsigned long _stopTimeMillis = 0;
     String _name;
   public:
     IrrigationTimer(String name);
-    void setTimer(unsigned long timeInFuture);
+    void setTimer(unsigned long timeInFutureMs);
     bool hasLapsed();
 
 }; 
 /****************************************/
 
 IrrigationTimer::IrrigationTimer(String name) {
-  _name = name;
-  return;
+    _name = name;
+    return;
 }
 
-void IrrigationTimer::setTimer(unsigned long timeInFuture) {
-  _stopTimeMillis = getMillis() + timeInFuture;
-}
-
-unsigned long IrrigationTimer::getMillis() {
-  return millis();
+void IrrigationTimer::setTimer(unsigned long timeInFutureMs) {
+    _stopTimeMillis = millis() + timeInFutureMs;
 }
 
 bool IrrigationTimer::hasLapsed() {
-//  Serial.println("Timer check for: " + _name + ", " + String(_stopTimeMillis));
-  if (_stopTimeMillis == 0) {
-    return true;
-  } else if (this->getMillis() >= _stopTimeMillis) {
-//    Serial.println("      * Timer ceased: " + _name);
-    _stopTimeMillis = 0;
-    return true;
-  } else {
-    return false;
-  }
+    if (_stopTimeMillis == 0) {
+        return true;
+    } else if (millis() >= _stopTimeMillis) {
+        _stopTimeMillis = 0;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 #endif

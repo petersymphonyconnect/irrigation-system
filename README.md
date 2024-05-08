@@ -49,9 +49,9 @@ A [circuit schematic](docs/IrrigationSystem.pdf) can be found in the docs folder
 2. On first boot, a default irrigation setup will be configured. You can retrieve this configuration using the following:
 ```
 % curl http://<myESPipaddress>/config
-{"instance": "MyIrrigationServer"}
+{"instance": "MyIrrigationServer", "loggers": [{"type": "serial"}]}
 ```
-If you can't work out what IP address DHCP has assigned, this will be printed to the ESP8266 serial port during boot. Once the service is configured with a logger, you will get the ip address reported in boot log events for easier identifiation.
+If you can't work out what IP address DHCP has assigned, this will be printed to the ESP8266 serial port during boot. Once the service is configured with a Mqtt or Loki logger, you will get the ip address reported in boot log events for easier identifiation.
 
 To set configuration, you specify zero or more logging interfaces and zero or more SensorGroups. Here's an example which:
 - Configures both a loki integration for logging, and an Mqtt integration. If you don't require logging, remove one or both of these

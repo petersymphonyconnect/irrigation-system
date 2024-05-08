@@ -28,6 +28,7 @@ ConfigManager configManager(&server, &irrigationService, &analogueSensorHandler)
 
 #define SERIAL_BAUD_RATE    115200
 
+//
 // Network connection status LED
 int NETWORK_STATUS_LED = D8; 
 bool serviceActive = false;

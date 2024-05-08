@@ -18,45 +18,45 @@
 class IrrigationService 
 {
   private:
-    IrrigationLogger* _logger;
-    std::list<SensorGroup*> _sensorGroups{};
-    IrrigationTimer _systemStatsTimer = IrrigationTimer("systemStats");
+      IrrigationLogger* _logger;
+      std::list<SensorGroup*> _sensorGroups{};
+      IrrigationTimer _systemStatsTimer = IrrigationTimer("systemStats");
 
   public:
-    IrrigationService();
-    ~IrrigationService();
-    // Configuration methods
-    void registerSensorGroup(SensorGroup *group);
-    void removeSensorGroups();
-    void setInstanceName(String instanceName);
-    IrrigationLogger *getLogger();
-    
-    // Operation methods
-    bool isPumping();
-    void performWateringCycle();
-    void loop();
+      IrrigationService();
+      ~IrrigationService();
+      // Configuration methods
+      void registerSensorGroup(SensorGroup *group);
+      void removeSensorGroups();
+      void setInstanceName(String instanceName);
+      IrrigationLogger *getLogger();
+      
+      // Operation methods
+      bool isPumping();
+      void performWateringCycle();
+      void loop();
 }; 
 /****************************************/
 
 IrrigationService::IrrigationService() {
-  _logger = new IrrigationLogger();
-  return;
+    _logger = new IrrigationLogger();
+    return;
 }
 
 IrrigationService::~IrrigationService() {
-  removeSensorGroups();
-  delete _logger;
-  return;
+    removeSensorGroups();
+    delete _logger;
+    return;
 }
 
 IrrigationLogger *IrrigationService::getLogger() {
-  return _logger;
+    return _logger;
 }
 
 // Register a sensor group with the service. IrrigationService takes
 // responsibilty for destruction of a registered SensorGroup object
 void IrrigationService::registerSensorGroup(SensorGroup *sensorGroup) {
-  _sensorGroups.push_back(sensorGroup);
+    _sensorGroups.push_back(sensorGroup);
 }
 
 void IrrigationService::setInstanceName(String instanceName) {
@@ -64,20 +64,20 @@ void IrrigationService::setInstanceName(String instanceName) {
 }
 
 void IrrigationService::removeSensorGroups() {
-  for (auto & group : _sensorGroups) {
-    delete group;
-  }
-  _sensorGroups.clear();
+    for (auto & group : _sensorGroups) {
+      delete group;
+    }
+    _sensorGroups.clear();
 }
 
 
 // Loop through all the pumps, return true if any are pumping
 bool IrrigationService::isPumping() {
-  bool isPumping = false;
-  for (auto & group : _sensorGroups) {
-    isPumping = isPumping || group->isPumping();
-  }
-  return isPumping;
+    bool isPumping = false;
+    for (auto & group : _sensorGroups) {
+        isPumping = isPumping || group->isPumping();
+    }
+    return isPumping;
 }
 
 //
