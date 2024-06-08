@@ -149,7 +149,7 @@ std::list<int> SensorGroup::getSensorValues() {
     int sensorValue;
     // Loop through the sensors in the group, logging the values, and storing
     for (auto const& channelNumber : _moistureSensorChannelNumbers) {
-        sensorValue = _analogueSensorHandler->getSensorReading(channelNumber);
+        sensorValue = _analogueSensorHandler->getSensorSimpleMovingAverageReading(channelNumber);
         _logger->logMoistureLevel(_groupName, channelNumber, sensorValue, _minThreshold);
         _sensorValues.push_back(sensorValue);
     }
@@ -189,12 +189,12 @@ bool SensorGroup::needsWatering() {
 }
 
 void SensorGroup::logWaterLevel() {
-    int waterLevel = _analogueSensorHandler->getSensorReading(_waterLevelChannelNumber);
+    int waterLevel = _analogueSensorHandler->getAbsoluteSensorReading(_waterLevelChannelNumber);
     _logger->logWaterLevel(_groupName, waterLevel);
 }
 
 int SensorGroup::getWaterLevel() {
-    int waterLevel = _analogueSensorHandler->getSensorReading(_waterLevelChannelNumber);
+    int waterLevel = _analogueSensorHandler->getAbsoluteSensorReading(_waterLevelChannelNumber);
     return waterLevel;
 }
 
