@@ -46,6 +46,7 @@ void setup()
     
     Serial.begin(SERIAL_BAUD_RATE);
   
+//    wifiManager.setConfigPortalTimeout(120);
     wifiManager.autoConnect();
 
     // fauxmo.addDevice("irigation system");

@@ -151,7 +151,7 @@ std::list<int> SensorGroup::getSensorValues() {
     for (auto const& channelNumber : _moistureSensorChannelNumbers) {
         sensorValue = _analogueSensorHandler->getSensorReading(channelNumber);
         _logger->logMoistureLevel(_groupName, channelNumber, sensorValue, _minThreshold);
-        _sensorValues.push_back(_analogueSensorHandler->getSensorReading(channelNumber));
+        _sensorValues.push_back(sensorValue);
     }
 
     return _sensorValues;
@@ -234,8 +234,9 @@ void SensorGroup::loop() {
     if (pumpCheckTimer.hasLapsed()) {
         bool isPumpingResult = isPumping();
         if (isPumpingResult) {
-            _logger->logPumpStatus(_groupName, false);
+            _logger->logPumpStatus(_groupName, true);
         }
+
         pumpCheckTimer.setTimer(_pumpCheckPeriodMs);
     }
 

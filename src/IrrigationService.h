@@ -31,6 +31,7 @@ class IrrigationService
       void setInstanceName(String instanceName);
       IrrigationLogger *getLogger();
       
+      
       // Operation methods
       bool isPumping();
       void performWateringCycle();
