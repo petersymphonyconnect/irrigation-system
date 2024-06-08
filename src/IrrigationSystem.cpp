@@ -22,8 +22,8 @@ WiFiManager wifiManager;
 // Irrigation service setup
 std::array<int,3> analogueSelectorPinIds = {D5,D6,D7};
 AnalogueSensorHandler analogueSensorHandler(analogueSelectorPinIds);
-ESP8266WebServer server(80);
-IrrigationService irrigationService = IrrigationService();
+ESP8266WebServer server(8080);
+IrrigationService irrigationService = IrrigationService(&analogueSensorHandler);
 ConfigManager configManager(&server, &irrigationService, &analogueSensorHandler);
 
 #define SERIAL_BAUD_RATE    115200
