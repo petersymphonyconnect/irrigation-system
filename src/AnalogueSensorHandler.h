@@ -53,6 +53,12 @@ int AnalogueSensorHandler::getSensorReading(int channelNumber)
 {
   int sensorValue;
   setActiveChannel(channelNumber);
+  
+  unsigned long loop_time = millis();
+  // Yielding for 100ms
+  while((millis()-loop_time)< 200){
+    yield();
+  }
   sensorValue = 1023 - analogRead(_analogInPin);
   return sensorValue;
 }
