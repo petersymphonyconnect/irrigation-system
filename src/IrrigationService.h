@@ -32,6 +32,7 @@ class IrrigationService
       ~IrrigationService();
       // Configuration methods
       void registerSensorGroup(SensorGroup *group);
+      SensorGroup* getSensorGroupByName(String groupName);
       void removeSensorGroups();
       void setInstanceName(String instanceName);
       IrrigationLogger *getLogger();
@@ -64,6 +65,15 @@ IrrigationLogger *IrrigationService::getLogger() {
 // responsibilty for destruction of a registered SensorGroup object
 void IrrigationService::registerSensorGroup(SensorGroup *sensorGroup) {
     _sensorGroups.push_back(sensorGroup);
+}
+
+SensorGroup* IrrigationService::getSensorGroupByName(String groupName) {
+  for (auto & group : _sensorGroups) {
+    if (group->getGroupName().equals(groupName)) {
+        return group;
+    }
+  }
+  return NULL;
 }
 
 void IrrigationService::setInstanceName(String instanceName) {
