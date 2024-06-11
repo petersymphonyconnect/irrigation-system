@@ -3,6 +3,7 @@
 //
 
 #include <ESP8266WebServer.h>
+#include <uri/UriRegex.h>
 #include <ArduinoJson.h>
 #include "LittleFS.h"
 #include "SensorGroup.h"
@@ -42,6 +43,7 @@ class ConfigManager
         void handleGet();
         void handlePost();
         void handleDelete();
+        void handleSensorGroupTrigger();
         void loadConfiguration();
         void writeDefaultConfiguration();
         String processJsonConfig(JsonDocument configDoc, bool applyConfig);
@@ -66,6 +68,9 @@ ConfigManager::ConfigManager(ESP8266WebServer *server,
     });
     _configServer->on("/config",HTTP_DELETE,[this]() {
         this->handleDelete();
+    });
+    _configServer->on(UriRegex("/sensorgroup/(.+)/pump"),HTTP_POST,[this]() {
+        this->handleSensorGroupTrigger();
     });
     _configServer->begin();
 }
@@ -336,6 +341,20 @@ String ConfigManager::processJsonConfig(JsonDocument configDoc, bool applyConfig
         }
     }
     return "";
+}
+
+void ConfigManager::handleSensorGroupTrigger() {
+  SensorGroup* sensorGroup = _irrigationService->getSensorGroupByName(_configServer->pathArg(0));
+  if (sensorGroup) {
+    if (sensorGroup->hasWater()) {
+      _configServer->send(200, "text/plain", "Sensor group " + _configServer->pathArg(0) + " pumping triggered");
+      sensorGroup->startPumping();
+    } else {
+      _configServer->send(503, "text/plain", "Sensor group " + _configServer->pathArg(0) + " has no water");
+    }  
+  } else {
+    _configServer->send(404, "text/plain", "Sensor group " + _configServer->pathArg(0) + " not found");    
+  }
 }
 
 #endif
