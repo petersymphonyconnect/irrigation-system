@@ -23,6 +23,7 @@ class SensorGroup
       String _groupName;
       std::list<uint8_t> _pumpPinIds;
       std::list<uint8_t> _moistureSensorChannelNumbers;
+      bool _hasWaterLevelSensor = false;
       int _waterLevelChannelNumber;
       int _triggerMode;
       int _minThreshold;
@@ -38,8 +39,9 @@ class SensorGroup
       IrrigationTimer moistureCheckTimer = IrrigationTimer("moisture");
       IrrigationTimer pumpCheckTimer = IrrigationTimer("pump");
 
-  public:
-      SensorGroup(IrrigationLogger* logger,
+    public:
+        // Constructure with water level sensor
+        SensorGroup(IrrigationLogger* logger,
                   AnalogueSensorHandler* sensorHandler,
                   String groupName,
                           int triggerMode,
@@ -48,45 +50,84 @@ class SensorGroup
                           std::list<uint8_t> pumpPinIds,
                           int minThreshold,
                           int pumpPeriodSeconds,
-                          unsigned long waterCheckPeriodMs,
-                          unsigned long pumpCheckPeriodMs,
-                          unsigned long moistureCheckPeriodMs);
-      ~SensorGroup();
-      void checkMoistureLevelAndWaterAndWaterIfNeeded();
-      std::list<int> getSensorValues();
-      bool needsWatering();
-      String getGroupName();
-      std::list<uint8_t> getPumpPinIds();
-      void startPumping();
-      bool isPumping();
-      int getWaterLevel();
-      void logWaterLevel();
-      bool hasWater();
-      void loop();
+                        unsigned long waterCheckPeriodMs,
+                        unsigned long pumpCheckPeriodMs,
+                        unsigned long moistureCheckPeriodMs);
+
+        // Constructor without a water level sensor
+        SensorGroup(  IrrigationLogger* logger,
+                    AnalogueSensorHandler* sensorHandler,
+                    String groupName,
+                    int triggerMode,
+                    std::list<uint8_t> moistureSensorChannelNumbers,
+                    std::list<uint8_t> pumpPinIds,
+                    int minThreshold,
+                    int pumpPeriodSeconds,
+                    unsigned long pumpCheckPeriodMs,
+                    unsigned long moistureCheckPeriodMs);
+                                            
+        ~SensorGroup();
+        void checkMoistureLevelAndWaterAndWaterIfNeeded();
+        std::list<int> getSensorValues();
+        bool needsWatering();
+        String getGroupName();
+        std::list<uint8_t> getPumpPinIds();
+        void startPumping();
+        bool isPumping();
+        int getWaterLevel();
+        void logWaterLevel();
+        bool hasWater();
+        void loop();
 };
+SensorGroup::SensorGroup(IrrigationLogger* logger,
+    AnalogueSensorHandler* sensorHandler,
+    String groupName,
+    int triggerMode,
+    uint8_t waterLevelChannelNumber,
+    std::list<uint8_t> moistureSensorChannelNumbers,
+    std::list<uint8_t> pumpPinIds,
+    int minThreshold,
+    int pumpPeriodSeconds,
+    unsigned long waterCheckPeriodMs,
+    unsigned long pumpCheckPeriodMs,
+    unsigned long moistureCheckPeriodMs) {
+ 
+    SensorGroup(logger,
+        sensorHandler,
+        groupName,
+        triggerMode,
+        moistureSensorChannelNumbers,
+        pumpPinIds,
+        minThreshold,
+        pumpPeriodSeconds,
+        pumpCheckPeriodMs,
+        moistureCheckPeriodMs);
+     
+     _waterLevelChannelNumber = waterLevelChannelNumber;
+     _waterCheckPeriodMs = waterCheckPeriodMs;
+     _hasWaterLevelSensor = true;
+    return;
+}
 
 SensorGroup::SensorGroup(IrrigationLogger* logger,
                          AnalogueSensorHandler* sensorHandler,
                          String groupName,
                          int triggerMode,
-                         uint8_t waterLevelChannelNumber,
                          std::list<uint8_t> moistureSensorChannelNumbers,
                          std::list<uint8_t> pumpPinIds,
                          int minThreshold,
                          int pumpPeriodSeconds,
-                         unsigned long waterCheckPeriodMs,
                          unsigned long pumpCheckPeriodMs,
                          unsigned long moistureCheckPeriodMs) {
+    _hasWaterLevelSensor = false;
     _logger = logger;
     _analogueSensorHandler = sensorHandler;
     _groupName = groupName;
     _moistureSensorChannelNumbers = moistureSensorChannelNumbers;
     _pumpPinIds = pumpPinIds;
-    _waterLevelChannelNumber = waterLevelChannelNumber;
     _triggerMode = triggerMode;
     _minThreshold = minThreshold;
     _pumpPeriodSeconds = pumpPeriodSeconds;
-    _waterCheckPeriodMs = waterCheckPeriodMs;
     _pumpCheckPeriodMs = pumpCheckPeriodMs;
     _moistureCheckPeriodMs = moistureCheckPeriodMs;
   
@@ -189,8 +230,10 @@ bool SensorGroup::needsWatering() {
 }
 
 void SensorGroup::logWaterLevel() {
-    int waterLevel = _analogueSensorHandler->getAbsoluteSensorReading(_waterLevelChannelNumber);
-    _logger->logWaterLevel(_groupName, waterLevel);
+    if (_hasWaterLevelSensor) {
+        int waterLevel = _analogueSensorHandler->getAbsoluteSensorReading(_waterLevelChannelNumber);
+        _logger->logWaterLevel(_groupName, waterLevel);
+    }
 }
 
 int SensorGroup::getWaterLevel() {
@@ -199,7 +242,11 @@ int SensorGroup::getWaterLevel() {
 }
 
 bool SensorGroup::hasWater() {
-    return getWaterLevel() > IRRIGATION_MINIMUM_WATER_LEVEL;
+    if (_hasWaterLevelSensor) {
+        return getWaterLevel() > IRRIGATION_MINIMUM_WATER_LEVEL;
+    } else {
+        return true;
+    }
 }
 
 void SensorGroup::checkMoistureLevelAndWaterAndWaterIfNeeded() {
@@ -227,7 +274,7 @@ void SensorGroup::loop() {
         }
         moistureCheckTimer.setTimer(_moistureCheckPeriodMs);
     }
-    if (waterLevelCheckTimer.hasLapsed()) {
+    if (_hasWaterLevelSensor && waterLevelCheckTimer.hasLapsed()) {
         logWaterLevel();
         waterLevelCheckTimer.setTimer(_waterCheckPeriodMs);
     }
