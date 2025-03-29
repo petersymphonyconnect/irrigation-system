@@ -92,20 +92,25 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
     unsigned long pumpCheckPeriodMs,
     unsigned long moistureCheckPeriodMs) {
  
-    SensorGroup(logger,
-        sensorHandler,
-        groupName,
-        triggerMode,
-        moistureSensorChannelNumbers,
-        pumpPinIds,
-        minThreshold,
-        pumpPeriodSeconds,
-        pumpCheckPeriodMs,
-        moistureCheckPeriodMs);
-     
-     _waterLevelChannelNumber = waterLevelChannelNumber;
-     _waterCheckPeriodMs = waterCheckPeriodMs;
-     _hasWaterLevelSensor = true;
+    _logger = logger;
+    _analogueSensorHandler = sensorHandler;
+    _groupName = groupName;
+    _moistureSensorChannelNumbers = moistureSensorChannelNumbers;
+    _pumpPinIds = pumpPinIds;
+    _triggerMode = triggerMode;
+    _minThreshold = minThreshold;
+    _pumpPeriodSeconds = pumpPeriodSeconds;
+    _pumpCheckPeriodMs = pumpCheckPeriodMs;
+    _moistureCheckPeriodMs = moistureCheckPeriodMs;
+         
+    _waterLevelChannelNumber = waterLevelChannelNumber;
+    _waterCheckPeriodMs = waterCheckPeriodMs;
+    _hasWaterLevelSensor = true;
+
+    for (auto & pumpPinId : _pumpPinIds) {    
+        pinMode(pumpPinId, OUTPUT);
+        digitalWrite(pumpPinId, false);
+    }
     return;
 }
 
@@ -119,7 +124,6 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
                          int pumpPeriodSeconds,
                          unsigned long pumpCheckPeriodMs,
                          unsigned long moistureCheckPeriodMs) {
-    _hasWaterLevelSensor = false;
     _logger = logger;
     _analogueSensorHandler = sensorHandler;
     _groupName = groupName;
@@ -130,6 +134,7 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
     _pumpPeriodSeconds = pumpPeriodSeconds;
     _pumpCheckPeriodMs = pumpCheckPeriodMs;
     _moistureCheckPeriodMs = moistureCheckPeriodMs;
+    _hasWaterLevelSensor = false;
   
     for (auto & pumpPinId : _pumpPinIds) {    
         pinMode(pumpPinId, OUTPUT);
