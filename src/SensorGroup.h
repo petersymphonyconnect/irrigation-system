@@ -181,8 +181,6 @@ int SensorGroup::getMinSensorThreshold() {
     for (auto & wateringTime: _wateringTimes) {
         if (currentHour >= wateringTime[0] && // startHour
             currentHour <= wateringTime[1]) { // endHour
-                Serial.println(currentHour);
-                Serial.println(wateringTime[2]);
             return wateringTime[2];
         }
     }
