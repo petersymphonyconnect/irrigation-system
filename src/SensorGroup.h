@@ -3,6 +3,9 @@
 //
 
 #include <list>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <TZ.h>
 #include "IrrigationLogger.h"
 #include "IrrigationTimer.h"
 #include "AnalogueSensorHandler.h"
@@ -16,6 +19,12 @@
 
 #define IRRIGATION_MINIMUM_WATER_LEVEL 50
 
+/* Configuration of time */
+#define MY_NTP_SERVER "pool.ntp.org"  
+#define MY_TZ "GMT0BST,M3.5.0/1,M10.5.0" 
+time_t sgNow;
+tm sgTm;
+
 class SensorGroup 
 {
   private:
@@ -26,7 +35,8 @@ class SensorGroup
       bool _hasWaterLevelSensor = false;
       int _waterLevelChannelNumber;
       int _triggerMode;
-      int _minThreshold;
+//      int _minThreshold;
+      std::list<std::vector<int>> _wateringTimes;
       int _pumpPeriodSeconds;
       unsigned long _pumpStopTime;
       IrrigationLogger* _logger;
@@ -48,7 +58,7 @@ class SensorGroup
                           uint8_t waterLevelChannelNumber,
                           std::list<uint8_t> moistureSensorChannelNumbers,
                           std::list<uint8_t> pumpPinIds,
-                          int minThreshold,
+                          std::list<std::vector<int>> wateringTimes,
                           int pumpPeriodSeconds,
                         unsigned long waterCheckPeriodMs,
                         unsigned long pumpCheckPeriodMs,
@@ -61,7 +71,7 @@ class SensorGroup
                     int triggerMode,
                     std::list<uint8_t> moistureSensorChannelNumbers,
                     std::list<uint8_t> pumpPinIds,
-                    int minThreshold,
+                    std::list<std::vector<int>> wateringTimes,
                     int pumpPeriodSeconds,
                     unsigned long pumpCheckPeriodMs,
                     unsigned long moistureCheckPeriodMs);
@@ -72,6 +82,7 @@ class SensorGroup
         bool needsWatering();
         String getGroupName();
         std::list<uint8_t> getPumpPinIds();
+        int getMinSensorThreshold();
         void startPumping();
         bool isPumping();
         int getWaterLevel();
@@ -86,7 +97,7 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
     uint8_t waterLevelChannelNumber,
     std::list<uint8_t> moistureSensorChannelNumbers,
     std::list<uint8_t> pumpPinIds,
-    int minThreshold,
+    std::list<std::vector<int>> wateringTimes,
     int pumpPeriodSeconds,
     unsigned long waterCheckPeriodMs,
     unsigned long pumpCheckPeriodMs,
@@ -97,8 +108,8 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
     _groupName = groupName;
     _moistureSensorChannelNumbers = moistureSensorChannelNumbers;
     _pumpPinIds = pumpPinIds;
+    _wateringTimes = wateringTimes;
     _triggerMode = triggerMode;
-    _minThreshold = minThreshold;
     _pumpPeriodSeconds = pumpPeriodSeconds;
     _pumpCheckPeriodMs = pumpCheckPeriodMs;
     _moistureCheckPeriodMs = moistureCheckPeriodMs;
@@ -111,6 +122,7 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
         pinMode(pumpPinId, OUTPUT);
         digitalWrite(pumpPinId, false);
     }
+    configTime(MY_TZ, MY_NTP_SERVER);
     return;
 }
 
@@ -120,7 +132,7 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
                          int triggerMode,
                          std::list<uint8_t> moistureSensorChannelNumbers,
                          std::list<uint8_t> pumpPinIds,
-                         int minThreshold,
+                         std::list<std::vector<int>> wateringTimes,
                          int pumpPeriodSeconds,
                          unsigned long pumpCheckPeriodMs,
                          unsigned long moistureCheckPeriodMs) {
@@ -129,8 +141,8 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
     _groupName = groupName;
     _moistureSensorChannelNumbers = moistureSensorChannelNumbers;
     _pumpPinIds = pumpPinIds;
+    _wateringTimes = wateringTimes;
     _triggerMode = triggerMode;
-    _minThreshold = minThreshold;
     _pumpPeriodSeconds = pumpPeriodSeconds;
     _pumpCheckPeriodMs = pumpCheckPeriodMs;
     _moistureCheckPeriodMs = moistureCheckPeriodMs;
@@ -140,7 +152,7 @@ SensorGroup::SensorGroup(IrrigationLogger* logger,
         pinMode(pumpPinId, OUTPUT);
         digitalWrite(pumpPinId, false);
     }
-
+    configTime(MY_TZ, MY_NTP_SERVER);
     return;
 }
 
@@ -157,6 +169,26 @@ String SensorGroup::getGroupName() {
 
 std::list<uint8_t> SensorGroup::getPumpPinIds() {
     return _pumpPinIds;
+}
+
+int SensorGroup::getMinSensorThreshold() {
+    // Get the hour of day
+    time(&sgNow);
+    localtime_r(&sgNow, &sgTm);
+    int currentHour = sgTm.tm_hour;
+
+    // Search wateringTimes for a matching hour entry
+    for (auto & wateringTime: _wateringTimes) {
+        if (currentHour >= wateringTime[0] && // startHour
+            currentHour <= wateringTime[1]) { // endHour
+                Serial.println(currentHour);
+                Serial.println(wateringTime[2]);
+            return wateringTime[2];
+        }
+    }
+    
+    // No valid watering time
+    return 0;
 }
 
 // If we're not already pumping, start the pump
@@ -196,7 +228,7 @@ std::list<int> SensorGroup::getSensorValues() {
     // Loop through the sensors in the group, logging the values, and storing
     for (auto const& channelNumber : _moistureSensorChannelNumbers) {
         sensorValue = _analogueSensorHandler->getSensorSimpleMovingAverageReading(channelNumber);
-        _logger->logMoistureLevel(_groupName, channelNumber, sensorValue, _minThreshold);
+        _logger->logMoistureLevel(_groupName, channelNumber, sensorValue, getMinSensorThreshold());
         _sensorValues.push_back(sensorValue);
     }
 
@@ -214,7 +246,7 @@ bool SensorGroup::needsWatering() {
     // any sensors are below threshold, return true. Maintain
     // a count of total breached sensors.
     for (auto const& sensorValue : _sensorValues) {
-        if (sensorValue < _minThreshold) {
+        if (sensorValue < getMinSensorThreshold()) {
             if (_triggerMode == MOISTURE_CONTROLLER_TRIGGER_ANY) {
                 return true;
             } else {
