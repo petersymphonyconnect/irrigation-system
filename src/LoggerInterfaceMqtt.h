@@ -38,7 +38,7 @@ LoggerInterfaceMqtt::LoggerInterfaceMqtt(String instanceName, const char* server
     _instanceName = instanceName;
     _mqttClient = new PubSubClient(_wifiClient);
     _mqttClient->setServer(server, port);
-    
+    _mqttClient->setKeepAlive(65535);
     if (!isConnected()) {
         Serial.println("Failed to connect toMQTT broker in constructor");
     }

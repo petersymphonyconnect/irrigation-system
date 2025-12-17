@@ -5,6 +5,7 @@
 #include <ESP8266WebServer.h>
 #include <uri/UriRegex.h>
 #include <ArduinoJson.h>
+#include <list>
 #include "LittleFS.h"
 #include "SensorGroup.h"
 #include "IrrigationTimer.h"
@@ -23,7 +24,7 @@
 
 #define CHECK_FOUND(obj, key, friendly) {if (!obj.containsKey(key)) {return String("Failed to find field ") + String(friendly) + String(" in config");}}
 #define CHECK_ARRAY_FOUND(array, friendly) {if (!array) {return String("Failed to find field ") + String(friendly) + String(" in config");}}
-
+//#define PARSE_SECTION(method) {ConfigManagerError cme = method(); if (cme.isError()) {return cme.getErrorString()}}
 //
 // Provides a web service to get/post Json configuration, stored in
 // persistent LittleFS storage, and updates applied to the running IrrigationService
@@ -271,12 +272,36 @@ String ConfigManager::processJsonConfig(JsonDocument configDoc, bool applyConfig
         for (JsonVariant groupJson : groupsJson) {
             CHECK_FOUND(groupJson,"name","groups.name");
             CHECK_FOUND(groupJson,"triggerType","groups.triggerType");
-            CHECK_FOUND(groupJson,"waterSensorChannel","groups.waterSensorChannel");
+            
+            // Get water sensor details, optionally specified
+            bool hasWaterSensor = false;
+            if (groupJson.containsKey("waterSensorChannel") &&
+                groupJson.containsKey("waterCheckPeriodMs")) {
+                hasWaterSensor = true;
+            }
+            
+            std::list<std::vector<int>> wateringTimes;
+            if (groupJson.containsKey("wateringTimes")) {
+                JsonArray wateringTimesJson = groupJson["wateringTimes"];
+                for (JsonVariant wateringTimeJson : wateringTimesJson) {
+//                    Serial.println("wateringTime loop");
+                    CHECK_FOUND(wateringTimeJson,"startHour","groups.wateringTime.startHour");
+                    CHECK_FOUND(wateringTimeJson,"endHour","groups.wateringTime.endHour");
+                    CHECK_FOUND(wateringTimeJson,"minMoisture","groups.wateringTime.minMoisture");
+                    std::vector<int> wateringTime = {
+                        wateringTimeJson["startHour"].as<int>(),
+                        wateringTimeJson["endHour"].as<int>(),
+                        wateringTimeJson["minMoisture"].as<int>()
+                    };
+                    wateringTimes.push_back(wateringTime);
+                }
+            } else {
+                return String("Error, no wateringTimes specified");
+            }
             CHECK_FOUND(groupJson,"moistureSensorChannels","groups.waterSensomoistureSensorChannels");
             CHECK_FOUND(groupJson,"pumpPinIds","groups.pumpPinIds");
             CHECK_FOUND(groupJson,"minMoisture","groups.minMoisture");
             CHECK_FOUND(groupJson,"pumpSecs","groups.pumpSecs");
-            CHECK_FOUND(groupJson,"waterCheckPeriodMs","groups.waterCheckPeriodMs");
             CHECK_FOUND(groupJson,"pumpCheckPeriodMs","groups.pumpCheckPeriodMs");
             CHECK_FOUND(groupJson,"moistureCheckPeriodMs","groups.moistureCheckPeriodMs");
             String name = groupJson["name"].as<String>();
@@ -292,7 +317,7 @@ String ConfigManager::processJsonConfig(JsonDocument configDoc, bool applyConfig
             if (waterSensorChannel < 0 || waterSensorChannel > 7) {
                 return String("Invalid water sensor channel identifier ") + String(waterSensorChannel);
             }
-            int minMoisture = groupJson["minMoisture"].as<int>();
+            //int minMoisture = groupJson["minMoisture"].as<int>();
             int pumpSecs = groupJson["pumpSecs"].as<int>();
             unsigned long waterCheckPeriodMs = groupJson["waterCheckPeriodMs"].as<unsigned long>();
             unsigned long pumpCheckPeriodMs = groupJson["pumpCheckPeriodMs"].as<unsigned long>();
@@ -323,19 +348,36 @@ String ConfigManager::processJsonConfig(JsonDocument configDoc, bool applyConfig
                 }
             }
             if (applyConfig) {
-                SensorGroup* group = new SensorGroup(_irrigationService->getLogger(),
-                                                    _analogueSensorHandler,
-                                                    name,
-                                                    type,
-                                                    waterSensorChannel,
-                                                    moistureSensorChannels,
-                                                    pumpPinIds,
-                                                    minMoisture,
-                                                    pumpSecs,
-                                                    waterCheckPeriodMs,
-                                                    pumpCheckPeriodMs,
-                                                    moistureCheckPeriodMs
-                                                    );
+                SensorGroup* group;
+                if (hasWaterSensor) {
+                    group = new SensorGroup(_irrigationService->getLogger(),
+                                                        _analogueSensorHandler,
+                                                        name,
+                                                        type,
+                                                        waterSensorChannel,
+                                                        moistureSensorChannels,
+                                                        pumpPinIds,
+                                                        wateringTimes,
+                                                        pumpSecs,
+                                                        waterCheckPeriodMs,
+                                                        pumpCheckPeriodMs,
+                                                        moistureCheckPeriodMs
+                                                        );
+                } else {
+                    // No water sensor 
+                    group = new SensorGroup(
+                                                _irrigationService->getLogger(),
+                                                _analogueSensorHandler,
+                                                name,
+                                                type,
+                                                moistureSensorChannels,
+                                                pumpPinIds,
+                                                wateringTimes,
+                                                pumpSecs,
+                                                pumpCheckPeriodMs,
+                                                moistureCheckPeriodMs
+                                                );
+                }
                 _irrigationService->registerSensorGroup(group);
             }
         }
